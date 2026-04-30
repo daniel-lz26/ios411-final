@@ -91,7 +91,7 @@ struct SearchView: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 48))
                 .foregroundColor(.secondary)
-            Text("No results for "\(query)"")
+            Text("No results for '\(query)'")
                 .font(.headline)
             Text("Try a different keyword or adjust the filters.")
                 .font(.subheadline)

@@ -41,7 +41,7 @@ struct MessagesView: View {
                 .foregroundColor(.secondary)
             Text("No messages yet")
                 .font(.headline)
-            Text("Tap "Message Seller" on any listing to start a conversation.")
+            Text("Tap 'Message Seller' on any listing to start a conversation.")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)

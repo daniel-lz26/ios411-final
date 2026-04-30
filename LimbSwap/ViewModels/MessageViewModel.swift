@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 // Manages the conversations list and the active chat session.
