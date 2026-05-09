@@ -13,6 +13,7 @@ struct Listing: Identifiable, Codable {
     var tradeType: TradeType
     var description: String
     var imageURLs: [String]
+    var imageBase64: String?   // primary image stored as base64
     var location: String
     var createdAt: Date
     var isActive: Bool

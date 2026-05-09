@@ -16,27 +16,15 @@ struct ListingDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
 
-                // MARK: Image carousel
-                if listing.imageURLs.isEmpty {
-                    Rectangle()
-                        .fill(Color(.systemGray5))
-                        .frame(height: 280)
-                        .overlay(Image(systemName: "photo").font(.largeTitle).foregroundColor(.secondary))
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 0) {
-                            ForEach(listing.imageURLs, id: \.self) { url in
-                                AsyncImage(url: URL(string: url)) { image in
-                                    image.resizable().scaledToFill()
-                                } placeholder: {
-                                    ProgressView()
-                                }
-                                .frame(width: UIScreen.main.bounds.width, height: 280)
-                                .clipped()
-                            }
-                        }
-                    }
-                }
+                // MARK: Image
+                Base64ImageView(
+                    base64: listing.imageBase64,
+                    fallbackIcon: "photo",
+                    fallbackColor: Color(.systemGray3)
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: 280)
+                .clipped()
 
                 VStack(alignment: .leading, spacing: 12) {
 

@@ -14,15 +14,19 @@ struct CreateListingView: View {
             Form {
                 // MARK: — Photos section
                 Section("Photos") {
-                    PhotosPicker(selection: $pickerItems, maxSelectionCount: 4, matching: .images) {
+                    PhotosPicker(selection: $pickerItems, maxSelectionCount: 1, matching: .images) {
                         Label(
-                            vm.selectedImages.isEmpty ? "Add Photos" : "\(vm.selectedImages.count) photo(s) selected",
-                            systemImage: "photo.on.rectangle.angled"
+                            vm.selectedImages.isEmpty ? "Add a Photo" : "1 photo selected",
+                            systemImage: "photo.badge.plus"
                         )
                     }
                     .onChange(of: pickerItems) { items in
                         Task { await loadImages(from: items) }
                     }
+
+                    Text("One photo per listing (stored securely in database)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
 
                     // Preview thumbnails
                     if !vm.selectedImages.isEmpty {

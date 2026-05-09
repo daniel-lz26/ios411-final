@@ -68,20 +68,15 @@ struct HomeView: View {
 
 struct ListingCard: View {
     let listing: Listing
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            // Image placeholder / async image
-            AsyncImage(url: URL(string: listing.imageURLs.first ?? "")) { image in
-                image.resizable().scaledToFill()
-            } placeholder: {
-                Rectangle()
-                    .fill(Color(.systemGray5))
-                    .overlay(
-                        Image(systemName: "photo")
-                            .foregroundColor(.secondary)
-                    )
-            }
+            // Shows uploaded photo or a category-appropriate placeholder icon
+            Base64ImageView(
+                base64: listing.imageBase64,
+                fallbackIcon: categoryIcon(for: listing.category),
+                fallbackColor: .green
+            )
             .frame(height: 160)
             .clipped()
             .cornerRadius(10)
@@ -111,5 +106,18 @@ struct ListingCard: View {
             }
             .padding(.horizontal, 4)
         }
+    }
+}
+
+// Returns a relevant SF Symbol name for a listing category,
+// used as the fallback icon when no image has been uploaded.
+private func categoryIcon(for category: Listing.Category) -> String {
+    switch category {
+    case .shoe:                return "shoe"
+    case .glove:               return "hand.raised"
+    case .sleeve:              return "tshirt"
+    case .prostheticAccessory: return "figure.roll"
+    case .clothing:            return "tshirt"
+    case .other:               return "archivebox"
     }
 }

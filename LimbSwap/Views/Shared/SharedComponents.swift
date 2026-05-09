@@ -1,5 +1,32 @@
 import SwiftUI
 
+// MARK: — Base64ImageView
+
+/// Renders an image from a base64 string, or shows a placeholder icon if absent.
+struct Base64ImageView: View {
+    let base64: String?
+    let fallbackIcon: String      // SF Symbol name
+    let fallbackColor: Color
+
+    var body: some View {
+        if let base64 = base64,
+           let data = Data(base64Encoded: base64),
+           let uiImage = UIImage(data: data) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .scaledToFill()
+        } else {
+            Rectangle()
+                .fill(fallbackColor.opacity(0.15))
+                .overlay(
+                    Image(systemName: fallbackIcon)
+                        .font(.title2)
+                        .foregroundColor(fallbackColor)
+                )
+        }
+    }
+}
+
 // MARK: — ListingRow
 
 /// A compact horizontal row for displaying a listing in a list (Profile, Search results).
@@ -9,13 +36,11 @@ struct ListingRow: View {
     var body: some View {
         HStack(spacing: 12) {
             // Thumbnail
-            AsyncImage(url: URL(string: listing.imageURLs.first ?? "")) { image in
-                image.resizable().scaledToFill()
-            } placeholder: {
-                Rectangle()
-                    .fill(Color(.systemGray5))
-                    .overlay(Image(systemName: "photo").foregroundColor(.secondary))
-            }
+            Base64ImageView(
+                base64: listing.imageBase64,
+                fallbackIcon: "photo",
+                fallbackColor: Color(.systemGray3)
+            )
             .frame(width: 60, height: 60)
             .clipped()
             .cornerRadius(8)

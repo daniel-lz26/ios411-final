@@ -25,8 +25,14 @@ class ListingViewModel: ObservableObject {
 
     // MARK: — Post Listing
 
-    /// Uploads images (if any), creates the Listing struct, and writes it to Firestore.
+    /// Converts the first selected image to base64, creates the Listing struct,
+    /// and writes it to Firestore. No Firebase Storage used.
     func postListing(seller: User) async {
+        guard !title.isEmpty, !size.isEmpty else {
+            errorMessage = "Please fill in all required fields."
+            return
+        }
+
         isLoading      = true
         errorMessage   = nil
         successMessage = nil
@@ -34,12 +40,11 @@ class ListingViewModel: ObservableObject {
 
         do {
             let listingId = UUID().uuidString
-            var imageURLs: [String] = []
 
-            // Upload each selected photo to Firebase Storage.
-            for image in selectedImages {
-                let url = try await listingService.uploadImage(image, listingId: listingId)
-                imageURLs.append(url)
+            // Convert first selected image to base64 (one image per listing for Firestore size limit)
+            var base64Image: String? = nil
+            if let firstImage = selectedImages.first {
+                base64Image = listingService.imageToBase64(firstImage)
             }
 
             let listing = Listing(
@@ -53,13 +58,14 @@ class ListingViewModel: ObservableObject {
                 condition:   condition,
                 tradeType:   tradeType,
                 description: description,
-                imageURLs:   imageURLs,
+                imageURLs:   [],          // empty — no Firebase Storage
+                imageBase64: base64Image,
                 location:    seller.location,
                 createdAt:   Date(),
                 isActive:    true
             )
 
-            try await listingService.createListing(listing)
+            try await listingService.createListing(listing, imageBase64: base64Image)
             successMessage = "Your listing has been posted!"
             resetForm()
         } catch {

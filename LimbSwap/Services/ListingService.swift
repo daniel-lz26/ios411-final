@@ -1,13 +1,13 @@
 import Foundation
 import FirebaseFirestore
-import FirebaseStorage
 import UIKit
 
-// Handles all Firestore + Firebase Storage operations for listings.
+// Handles all Firestore operations for listings.
+// Images are stored as base64 strings inside the Firestore document instead of
+// Firebase Storage, which requires Google Cloud billing unavailable for this project.
 class ListingService {
     static let shared = ListingService()
     private let db = Firestore.firestore()
-    private let storage = Storage.storage()
 
     // MARK: — Fetch
 
@@ -53,9 +53,9 @@ class ListingService {
 
     // MARK: — Create
 
-    /// Creates a new listing document in Firestore and returns it.
-    func createListing(_ listing: Listing) async throws {
-        let data: [String: Any] = [
+    /// Creates a new listing document in Firestore, embedding the image as base64 if provided.
+    func createListing(_ listing: Listing, imageBase64: String?) async throws {
+        var data: [String: Any] = [
             "id":          listing.id,
             "sellerId":    listing.sellerId,
             "sellerName":  listing.sellerName,
@@ -71,24 +71,32 @@ class ListingService {
             "createdAt":   listing.createdAt,
             "isActive":    listing.isActive
         ]
+        if let base64 = imageBase64 {
+            data["imageBase64"] = base64
+        }
         try await db.collection(K.Firestore.listings)
             .document(listing.id)
             .setData(data)
     }
 
-    // MARK: — Image Upload
+    // MARK: — Image helper
 
-    /// Uploads a UIImage to Firebase Storage and returns the download URL string.
-    func uploadImage(_ image: UIImage, listingId: String) async throws -> String {
-        guard let data = image.jpegData(compressionQuality: 0.75) else {
-            throw NSError(domain: "LimbSwap", code: -1,
-                          userInfo: [NSLocalizedDescriptionKey: "Could not compress image"])
+    /// Compress and convert UIImage to base64 string for Firestore storage.
+    /// Resizes to max 600px wide to keep the Firestore document under 1 MB.
+    func imageToBase64(_ image: UIImage) -> String? {
+        let maxWidth: CGFloat = 600
+        let scale = maxWidth / image.size.width
+        let newSize = image.size.width > maxWidth
+            ? CGSize(width: maxWidth, height: image.size.height * scale)
+            : image.size
+
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        let resized = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: newSize))
         }
-        let ref = storage.reference()
-            .child("listings/\(listingId)/\(UUID().uuidString).jpg")
-        _ = try await ref.putDataAsync(data)
-        let url = try await ref.downloadURL()
-        return url.absoluteString
+
+        // Compress to JPEG at 0.4 quality — keeps size well under Firestore 1 MB limit
+        return resized.jpegData(compressionQuality: 0.4)?.base64EncodedString()
     }
 
     // MARK: — Decode helper
@@ -97,41 +105,43 @@ class ListingService {
     private func decode(_ data: [String: Any]) -> Listing? {
         guard
             let id          = data["id"]          as? String,
-            let sellerId    = data["sellerId"]    as? String,
-            let sellerName  = data["sellerName"]  as? String,
-            let title       = data["title"]       as? String,
-            let categoryRaw = data["category"]    as? String,
+            let sellerId    = data["sellerId"]     as? String,
+            let sellerName  = data["sellerName"]   as? String,
+            let title       = data["title"]        as? String,
+            let categoryRaw = data["category"]     as? String,
             let category    = Listing.Category(rawValue: categoryRaw),
-            let size        = data["size"]        as? String,
-            let sideRaw     = data["side"]        as? String,
+            let size        = data["size"]         as? String,
+            let sideRaw     = data["side"]         as? String,
             let side        = Listing.Side(rawValue: sideRaw),
-            let condRaw     = data["condition"]   as? String,
+            let condRaw     = data["condition"]    as? String,
             let condition   = Listing.Condition(rawValue: condRaw),
-            let tradeRaw    = data["tradeType"]   as? String,
+            let tradeRaw    = data["tradeType"]    as? String,
             let tradeType   = Listing.TradeType(rawValue: tradeRaw),
-            let description = data["description"] as? String,
-            let imageURLs   = data["imageURLs"]   as? [String],
-            let location    = data["location"]    as? String,
-            let isActive    = data["isActive"]    as? Bool
+            let description = data["description"]  as? String,
+            let location    = data["location"]     as? String,
+            let isActive    = data["isActive"]     as? Bool
         else { return nil }
 
-        let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+        let createdAt   = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+        let imageURLs   = data["imageURLs"]   as? [String] ?? []
+        let imageBase64 = data["imageBase64"] as? String
 
         return Listing(
-            id: id,
-            sellerId: sellerId,
-            sellerName: sellerName,
-            title: title,
-            category: category,
-            size: size,
-            side: side,
-            condition: condition,
-            tradeType: tradeType,
+            id:          id,
+            sellerId:    sellerId,
+            sellerName:  sellerName,
+            title:       title,
+            category:    category,
+            size:        size,
+            side:        side,
+            condition:   condition,
+            tradeType:   tradeType,
             description: description,
-            imageURLs: imageURLs,
-            location: location,
-            createdAt: createdAt,
-            isActive: isActive
+            imageURLs:   imageURLs,
+            imageBase64: imageBase64,
+            location:    location,
+            createdAt:   createdAt,
+            isActive:    isActive
         )
     }
 }
