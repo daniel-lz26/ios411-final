@@ -16,27 +16,27 @@ class ListingService {
         let snapshot = try await db.collection(K.Firestore.listings)
             .whereField("side", isEqualTo: side.rawValue)
             .whereField("isActive", isEqualTo: true)
-            .order(by: "createdAt", descending: true)
             .getDocuments()
         return snapshot.documents.compactMap { decode($0.data()) }
+            .sorted { $0.createdAt > $1.createdAt }
     }
 
     /// Loads all active listings regardless of side (used when user has .both affected sides).
     func fetchAllListings() async throws -> [Listing] {
         let snapshot = try await db.collection(K.Firestore.listings)
             .whereField("isActive", isEqualTo: true)
-            .order(by: "createdAt", descending: true)
             .getDocuments()
         return snapshot.documents.compactMap { decode($0.data()) }
+            .sorted { $0.createdAt > $1.createdAt }
     }
 
     /// Fetches listings posted by a specific user (used in ProfileView).
     func fetchListings(by sellerId: String) async throws -> [Listing] {
         let snapshot = try await db.collection(K.Firestore.listings)
             .whereField("sellerId", isEqualTo: sellerId)
-            .order(by: "createdAt", descending: true)
             .getDocuments()
         return snapshot.documents.compactMap { decode($0.data()) }
+            .sorted { $0.createdAt > $1.createdAt }
     }
 
     /// Full-text-style search: fetches all active listings, then filters client-side by keyword.

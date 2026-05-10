@@ -16,17 +16,18 @@ struct SeedData {
 
     static func seedDatabase() async {
         do {
-            try await seedUsers()
-            try await seedListings()
-            print("✅ Seed data loaded successfully")
+            let userIds = try await seedUsers()
+            try await seedListings(userIds: userIds)
+            try await seedConversations(userIds: userIds)
+            print("Seed data loaded successfully")
         } catch {
-            print("❌ Seed error: \(error)")
+            print("Seed error: \(error)")
         }
     }
 
     // MARK: - Seed Users
 
-    static func seedUsers() async throws {
+    static func seedUsers() async throws -> [String: String] {
         let users: [(email: String, password: String, name: String,
                      location: String, amputationType: String, affectedSide: String)] = [
             (
@@ -46,6 +47,8 @@ struct SeedData {
                 affectedSide: "Right"
             ),
         ]
+
+        var ids: [String: String] = [:]
 
         for entry in users {
             // Create Firebase Auth account (ignore error if already exists)
@@ -68,12 +71,15 @@ struct SeedData {
                 "createdAt":     Date()
             ]
             try await db.collection("users").document(uid).setData(data)
+            ids[entry.email] = uid
         }
+
+        return ids
     }
 
     // MARK: - Seed Listings
 
-    static func seedListings() async throws {
+    static func seedListings(userIds: [String: String]) async throws {
         let items: [(title: String, category: String, size: String,
                      side: String, condition: String,
                      tradeType: String, description: String,
@@ -168,10 +174,9 @@ struct SeedData {
             ),
         ]
 
-        // Seller IDs are filled in after Auth account creation in seedUsers().
-        // We use placeholder strings here; the UID lookup happens at runtime.
-        // Listings alternate between the two seed sellers.
-        let sellerIds = ["seed_user_1", "seed_user_2"]
+        let user1Id = userIds["user1@limbswap.com"] ?? "seed_user_1"
+        let user2Id = userIds["user2@limbswap.com"] ?? "seed_user_2"
+        let sellerIds = [user1Id, user2Id]
 
         for (index, item) in items.enumerated() {
             let id = "seed_listing_\(index + 1)"
@@ -198,6 +203,80 @@ struct SeedData {
             ]
 
             try await db.collection("listings").document(id).setData(data)
+        }
+    }
+
+    // MARK: - Seed Conversations
+
+    static func seedConversations(userIds: [String: String]) async throws {
+        let user1Id   = userIds["user1@limbswap.com"] ?? "seed_user_1"
+        let user2Id   = userIds["user2@limbswap.com"] ?? "seed_user_2"
+        let user1Name = "Marcus T."
+        let user2Name = "Sarah K."
+
+        // Conversation 1: user1 messaged user2 about the Adidas Left Shoe (listing 2)
+        let conv1Id = "seed_conv_1"
+        let conv1Data: [String: Any] = [
+            "id":              conv1Id,
+            "participantIds":  [user1Id, user2Id],
+            "listingId":       "seed_listing_2",
+            "listingTitle":    "Adidas Ultraboost Left Shoe",
+            "lastMessage":     "That works for me! I can do Saturday.",
+            "lastMessageDate": Date().addingTimeInterval(-3600),
+            "otherUserName":   user2Name,
+            "otherUserImageURL": ""
+        ]
+        try await db.collection("conversations").document(conv1Id).setData(conv1Data)
+
+        let conv1Messages: [(id: String, senderId: String, text: String, hoursAgo: Double)] = [
+            ("seed_msg_1_1", user1Id, "Hey! Is the Adidas left shoe still available?", 5),
+            ("seed_msg_1_2", user2Id, "Yes it is! Barely worn. Are you in the San Diego area?", 4.5),
+            ("seed_msg_1_3", user1Id, "I'm in LA but I can meet halfway or shipping works too.", 4),
+            ("seed_msg_1_4", user2Id, "Shipping is fine. Want to meet up this weekend instead?", 2),
+            ("seed_msg_1_5", user1Id, "That works for me! I can do Saturday.", 1),
+        ]
+        for msg in conv1Messages {
+            let msgData: [String: Any] = [
+                "id":             msg.id,
+                "conversationId": conv1Id,
+                "senderId":       msg.senderId,
+                "text":           msg.text,
+                "timestamp":      Date().addingTimeInterval(-msg.hoursAgo * 3600)
+            ]
+            try await db.collection("conversations").document(conv1Id)
+                .collection("messages").document(msg.id).setData(msgData)
+        }
+
+        // Conversation 2: user2 messaged user1 about the Nike Right Shoe (listing 1)
+        let conv2Id = "seed_conv_2"
+        let conv2Data: [String: Any] = [
+            "id":              conv2Id,
+            "participantIds":  [user2Id, user1Id],
+            "listingId":       "seed_listing_1",
+            "listingTitle":    "Nike Air Max 97 Right Shoe",
+            "lastMessage":     "Size 10. Let me know if you want it!",
+            "lastMessageDate": Date().addingTimeInterval(-7200),
+            "otherUserName":   user1Name,
+            "otherUserImageURL": ""
+        ]
+        try await db.collection("conversations").document(conv2Id).setData(conv2Data)
+
+        let conv2Messages: [(id: String, senderId: String, text: String, hoursAgo: Double)] = [
+            ("seed_msg_2_1", user2Id, "Hi! Do you still have the Nike Air Max listing?", 6),
+            ("seed_msg_2_2", user1Id, "Yes, right shoe only. Perfect condition.", 5.5),
+            ("seed_msg_2_3", user2Id, "What size is it exactly?", 5),
+            ("seed_msg_2_4", user1Id, "Size 10. Let me know if you want it!", 2),
+        ]
+        for msg in conv2Messages {
+            let msgData: [String: Any] = [
+                "id":             msg.id,
+                "conversationId": conv2Id,
+                "senderId":       msg.senderId,
+                "text":           msg.text,
+                "timestamp":      Date().addingTimeInterval(-msg.hoursAgo * 3600)
+            ]
+            try await db.collection("conversations").document(conv2Id)
+                .collection("messages").document(msg.id).setData(msgData)
         }
     }
 }
