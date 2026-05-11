@@ -256,7 +256,7 @@ struct SeedData {
             "listingTitle":    "Nike Air Max 97 Right Shoe",
             "lastMessage":     "Size 10. Let me know if you want it!",
             "lastMessageDate": Date().addingTimeInterval(-7200),
-            "otherUserName":   user1Name,
+            "otherUserName":   user2Name,
             "otherUserImageURL": ""
         ]
         try await db.collection("conversations").document(conv2Id).setData(conv2Data)

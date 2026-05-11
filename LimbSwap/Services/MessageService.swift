@@ -15,9 +15,9 @@ class MessageService {
     func fetchConversations(for userId: String) async throws -> [Conversation] {
         let snapshot = try await db.collection(K.Firestore.conversations)
             .whereField("participantIds", arrayContains: userId)
-            .order(by: "lastMessageDate", descending: true)
             .getDocuments()
         return snapshot.documents.compactMap { decodeConversation($0.data()) }
+            .sorted { $0.lastMessageDate > $1.lastMessageDate }
     }
 
     /// Creates a new conversation document or returns the existing one if it already exists.
